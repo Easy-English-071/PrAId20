@@ -167,8 +167,22 @@
             visibility: hidden; opacity: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translate(-50%, 10px); background-color: var(--bg-color); color: var(--text-primary);
             border: 1px solid var(--glass-border); z-index: 20;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            margin-bottom: 0.5rem;
+            width: 256px;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        .has-tooltip:hover .tooltip { visibility: visible; opacity: 1; transform: translate(-50%, -5px); }
+        /* UPDATED: Tooltip visibility is now controlled by JS via event listeners */
+        .has-tooltip:hover .tooltip { 
+             visibility: visible; 
+             opacity: 1; 
+             /* The transform is now set by JS to handle edge cases */
+        }
         
         .score-container {
             width: 140px; height: 140px; margin: 1rem auto; display: flex; align-items: center; justify-content: center;
@@ -383,10 +397,6 @@
                         <h4 class="font-semibold text-text-secondary mb-2">Phân tích Trọng âm</h4>
                         <div id="stress-analysis"></div>
                     </div>
-                     <div id="thought-group-analysis-result" class="hidden analysis-box">
-                         <h4 class="font-semibold text-text-secondary mb-2">Phân tích Cụm Tư Duy</h4>
-                         <div id="thought-group-feedback"></div>
-                     </div>
                 </div>
                 
                 <div id="advanced-analysis" class="hidden space-y-4 card-layer glass-card">
@@ -492,8 +502,6 @@
         const thoughtGroupDisplay = document.getElementById('thought-group-display');
         const thoughtGroupInfo = document.getElementById('thought-group-info');
         const thoughtGroupTooltip = document.getElementById('thought-group-tooltip');
-        const thoughtGroupAnalysisResult = document.getElementById('thought-group-analysis-result');
-        const thoughtGroupFeedback = document.getElementById('thought-group-feedback');
         
         const historyBtn = document.getElementById('history-btn');
         const historyModal = document.getElementById('history-modal');
@@ -698,19 +706,24 @@
             }
 
             const accent = accentSelect.value;
+            // UPDATED: Changed the prompt for a more human-like explanation of thought groups.
             const combinedPrompt = `For the phrase "${text}" in ${accent}, provide a single JSON object with the following keys:
             1. 'simple': A standard, citation-form IPA transcription.
             2. 'detailed': A natural, connected speech transcription reflecting the thought groups. IMPORTANT: Apply the liaison symbol (‿) **only where phonetically correct linking occurs** (e.g., a final consonant linking to an initial vowel) and strictly **within** each thought group. Do NOT place the symbol between every word. The boundary between thought groups acts as a hard stop for linking.
             3. 'thought_groups': An object with two keys:
                a. 'groups': An array of strings representing the most natural, semantically-driven thought groups. Follow these rules STRICTLY:
-                  - **Rule 1 (Primary):** Break at major grammatical boundaries like clauses, especially where conjunctions like 'and', 'but', 'so', 'because' appear.
-                  - **Rule 2 (Phrasal Integrity):** Keep complete grammatical phrases together. This is critical.
-                      - **Prepositional Phrases:** NEVER split them (e.g., 'in the house', 'on the table').
-                      - **Verb Phrases:** Keep auxiliary verbs with main verbs (e.g., 'have been waiting', 'should go').
-                      - **Noun Phrases:** Keep articles and adjectives with their nouns (e.g., 'a beautiful day').
-                  - **Rule 3 (No Stranding):** NEVER leave short function words (e.g., 'a', 'the', 'in', 'on', 'at', 'to', 'of', 'is', 'are') isolated at the end of a group. They must belong with the phrase that follows. For example, "I'm looking forward / to it" is WRONG. It must be "I'm looking forward to it". "I have a / piece of cake" is WRONG. It should be "I have / a piece of cake" or "I have a piece of cake".
-                  - **Rule 4 (Semantic Units):** Group words that form a single idea. For example, "a piece of cake" is a single semantic unit.
-               b. 'explanation': A brief, friendly explanation in Vietnamese for the suggested grouping, referencing the rules above if possible.
+                 - **Rule 1 (Primary):** Break at major grammatical boundaries like clauses, especially where conjunctions like 'and', 'but', 'so', 'because' appear.
+                 - **Rule 2 (Phrasal Integrity):** Keep complete grammatical phrases together. This is critical.
+                   - **Prepositional Phrases:** NEVER split them (e.g., 'in the house', 'on the table').
+                   - **Verb Phrases:** Keep auxiliary verbs with main verbs (e.g., 'have been waiting', 'should go').
+                   - **Noun Phrases:** Keep articles and adjectives with their nouns (e.g., 'a beautiful day').
+                 - **Rule 3 (No Stranding):** NEVER leave short function words (e.g., 'a', 'the', 'in', 'on', 'at', 'to', 'of', 'is', 'are') isolated at the end of a group. They must belong with the phrase that follows. For example, "I'm looking forward / to it" is WRONG. It must be "I'm looking forward to it". "I have a / piece of cake" is WRONG. It should be "I have / a piece of cake" or "I have a piece of cake".
+                 - **Rule 4 (Semantic Units):** Group words that form a single idea. For example, "a piece of cake" is a single semantic unit.
+               b. 'explanation': Provide an insightful and clear explanation in Vietnamese for the suggested grouping. Your explanation should be detailed and feel like it's from a human coach, not a machine.
+                    - **Focus on the 'why':** Explain the logic behind the grouping based on meaning and grammar. For instance, point out how a group forms a complete idea (e.g., 'a piece of cake' is one unit of meaning) or how a pause naturally occurs at a grammatical boundary (like before a conjunction or between clauses).
+                    - **Avoid robotic language:** Do NOT use phrases like "Theo quy tắc số 1...". Instead, explain the concept naturally (e.g., "Chúng ta thường ngắt nghỉ một chút ở đây để tách biệt hai ý chính của câu.").
+                    - **Acknowledge flexibility:** Clearly state that this is a common and natural way to group the words to create a smooth rhythm, but emphasize that speakers can change these pauses to add emphasis or convey different emotions. This makes the advice more practical and less rigid.
+                    - **No generic greetings:** Do not start the explanation with "Chào bạn" or any similar greeting. Get straight to the point.
             Respond with ONLY the JSON object.`;
             
             setButtonLoading(transcribeBtn, null, true);
@@ -948,19 +961,20 @@
                 
                 const taskDescription = isSentence 
                     ? `Perform a multi-step, high-fidelity analysis of the user's audio.
-                        1.  **Initial Transcription:** First, internally transcribe the user's speech into an IPA string. This is your 'user_ipa'.
-                        2.  **Phoneme-by-Phoneme Comparison (Strict):** Compare your 'user_ipa' to the 'standard_ipa' phoneme by phoneme, following the 'phonetic_guidelines'.
-                        3.  **Scoring:** Calculate the 'overall_score' (0-100), heavily weighted by critical errors.
-                        4.  **Holistic Analysis:** Analyze stress, intonation, and thought groups.
-                        5.  **Final Review:** Ensure your analysis is consistent and accurate.`
+                         1.  **Initial Transcription:** First, internally transcribe the user's speech into an IPA string. This is your 'user_ipa'.
+                         2.  **Phoneme-by-Phoneme Comparison (Strict):** Compare your 'user_ipa' to the 'standard_ipa' phoneme by phoneme, following the 'phonetic_guidelines'.
+                         3.  **Scoring:** Calculate the 'overall_score' (0-100), heavily weighted by critical errors.
+                         4.  **Holistic Analysis:** Analyze stress and intonation.
+                         5.  **Final Review:** Ensure your analysis is consistent and accurate.`
                     : `Perform a high-fidelity analysis of the user's audio for this SINGLE WORD.
-                        1.  **Initial Transcription:** First, internally transcribe the user's speech into an IPA string. This is your 'user_ipa'.
-                        2.  **Phoneme-by-Phoneme Comparison (Strict):** Compare your 'user_ipa' to the 'standard_ipa' phoneme by phoneme, following the 'phonetic_guidelines'.
-                        3.  **Scoring:** Calculate the 'overall_score' (0-100), heavily weighted by critical errors.
-                        4.  **Stress Analysis:** Analyze the word stress. Is the primary stress placed on the correct syllable?
-                        5.  **IGNORE SENTENCE-LEVEL FEATURES:** Do NOT analyze intonation, thought groups, or connected speech. Set these fields to null in the output.
-                        6.  **Final Review:** Ensure your analysis is consistent and accurate for this single word, ignoring any previous context.`;
-
+                         1.  **Initial Transcription:** First, internally transcribe the user's speech into an IPA string. This is your 'user_ipa'.
+                         2.  **Phoneme-by-Phoneme Comparison (Strict):** Compare your 'user_ipa' to the 'standard_ipa' phoneme by phoneme, following the 'phonetic_guidelines'.
+                         3.  **Scoring:** Calculate the 'overall_score' (0-100), heavily weighted by critical errors.
+                         4.  **Stress Analysis:** Analyze the word stress. Is the primary stress placed on the correct syllable?
+                         5.  **IGNORE SENTENCE-LEVEL FEATURES:** Do NOT analyze intonation, thought groups, or connected speech. Set these fields to null in the output.
+                         6.  **Final Review:** Ensure your analysis is consistent and accurate for this single word, ignoring any previous context.`;
+                
+                // UPDATED: Removed 'thought_group_analysis' from the prompt schema.
                 const prompt = {
                     "role": "You are PrAI, an expert and empathetic AI phonetics coach. Your primary function is to provide **scientifically rigorous, accurate, and highly constructive** feedback to a Vietnamese learner of English. Your goal is to be an encouraging guide, balancing strict accuracy with an understanding of the learning process.",
                     "context": {
@@ -993,7 +1007,6 @@
                             "user_ipa": "string | null",
                             "phoneme_analysis": "[ { \"phoneme\": \"string\", \"status\": \"string ('correct', 'approximate', 'incorrect')\", \"feedback\": \"string | null\" } ] | null",
                             "stress_analysis": "{ \"correctly_placed\": \"boolean\", \"feedback\": \"string\" } | null",
-                            "thought_group_analysis?": "{ \"feedback\": \"string\" } | null",
                             "advanced_analysis?": "{ \"intonation\": { \"feedback\": \"string\" }, \"connected_speech\": [ { \"type\": \"string\", \"rule\": \"string\", \"example\": \"string\", \"explanation\": \"string\", \"feedback\": \"string\" } ] } | null",
                             "practice_suggestions": "{ \"youglish_us\": \"string\", \"youglish_uk\": \"string\" } | null"
                         }
@@ -1073,7 +1086,7 @@
 
                     if (p.feedback) {
                         const tooltip = document.createElement('div');
-                        tooltip.className = 'tooltip absolute bottom-full left-1/2 mb-2 w-64 rounded-lg p-3 text-xs shadow-lg';
+                        tooltip.className = 'tooltip'; // All styling is in the CSS
                         tooltip.textContent = p.feedback;
                         phonemeEl.appendChild(tooltip);
                     }
@@ -1086,14 +1099,6 @@
                 stressAnalysis.classList.toggle('text-green-400', data.stress_analysis.correctly_placed);
                 stressAnalysis.classList.toggle('text-red-400', !data.stress_analysis.correctly_placed);
             }
-            
-            if (data.thought_group_analysis && data.thought_group_analysis.feedback) {
-                thoughtGroupFeedback.innerHTML = data.thought_group_analysis.feedback;
-                thoughtGroupAnalysisResult.classList.remove('hidden');
-            } else {
-                thoughtGroupAnalysisResult.classList.add('hidden');
-            }
-
 
             if (data.advanced_analysis) {
                 intonationAnalysis.innerHTML = data.advanced_analysis.intonation.feedback;
@@ -1102,10 +1107,11 @@
                     data.advanced_analysis.connected_speech.forEach(item => {
                         const itemEl = document.createElement('div');
                         itemEl.className = 'p-3 rounded-md';
+                        // UPDATED: Removed 'font-mono' and added 'ipa-text' for correct font rendering on mobile.
                         itemEl.innerHTML = `
                             <h5 class="font-semibold text-accent-primary">${item.type}</h5>
                             <p class="text-sm mt-1"><strong class="text-text-secondary">Quy tắc:</strong> ${item.rule}</p>
-                            <p class="text-sm"><strong class="text-text-secondary">Ví dụ:</strong> <span class="text-accent-warning font-mono">${item.example}</span></p>
+                            <p class="text-sm"><strong class="text-text-secondary">Ví dụ:</strong> <span class="text-accent-warning ipa-text">${item.example}</span></p>
                             <div class="mt-2 p-3 rounded-md bg-black/5 dark:bg-white/5 text-sm border-l-4 border-accent-primary/50">
                                 <strong class="text-text-secondary">Nhận xét:</strong> ${item.feedback}
                             </div>
@@ -1149,7 +1155,6 @@
             practiceSuggestions.classList.add('hidden');
             showMoreBtn.classList.add('hidden');
             advancedAnalysis.classList.add('hidden');
-            thoughtGroupAnalysisResult.classList.add('hidden');
             showMoreBtn.textContent = 'Thông tin thêm';
         }
 
@@ -1417,6 +1422,31 @@
             clearHistoryBtn.addEventListener('click', clearHistory);
             historyList.addEventListener('click', handleHistoryClick);
 
+            // UPDATED: New tooltip logic to prevent it from going off-screen.
+            phonemeAnalysis.addEventListener('mouseover', (e) => {
+                const phonemeEl = e.target.closest('.has-tooltip');
+                if (!phonemeEl) return;
+                const tooltip = phonemeEl.querySelector('.tooltip');
+                if (!tooltip) return;
+
+                const rect = phonemeEl.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+
+                // Reset first to default centered position
+                tooltip.style.left = '50%';
+                tooltip.style.transform = 'translate(-50%, -5px)';
+
+                // Check if the phoneme itself is near the edge and adjust tooltip
+                if (rect.left < 120) { // If near left edge
+                    tooltip.style.left = '0';
+                    tooltip.style.transform = 'translate(0, -5px)';
+                } else if (rect.right > viewportWidth - 120) { // If near right edge
+                    tooltip.style.left = 'auto';
+                    tooltip.style.right = '0';
+                    tooltip.style.transform = 'translate(0, -5px)';
+                }
+            });
+
 
             audioUploadInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
@@ -1455,4 +1485,4 @@
         initApp();
     </script>
 </body>
-</ht
+</html>
